@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPTV Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; color: #333; }
+    header { background: #222; color: #fff; padding: 15px; text-align: center; }
+    main { padding: 20px; }
+    .container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+    .channel-list { flex: 1 1 250px; max-width: 300px; background: #fff; padding: 15px; border: 1px solid #ccc; height: 500px; overflow-y: auto; }
+    .category { padding: 10px; margin: 5px 0; background: #ddd; border-radius: 5px; cursor: pointer; text-align: center; transition: background 0.3s; }
+    .category:hover { background: #bbb; }
+    .video-player { flex: 2 1 500px; background: #fff; padding: 10px; border: 1px solid #ccc; }
+    video { width: 100%; height: 500px; background: #000; }
+  </style>
+</head>
+<body>
+  <header><h1>IPTV Player</h1></header>
+  <main>
+    <div class="container">
+      <div class="channel-list" id="channelList">
+        <h3>Categories</h3>
+      </div>
+      <div class="video-player">
+        <video id="videoPlayer" controls></video>
+      </div>
+    </div>
+  </main>
+  <script>
+    const categories = [
+      { name: "Animation", url: "https://iptv-org.github.io/iptv/categories/animation.m3u" },
+      { name: "Auto", url: "https://iptv-org.github.io/iptv/categories/auto.m3u" },
+      { name: "Business", url: "https://iptv-org.github.io/iptv/categories/business.m3u" },
+      { name: "Classic", url: "https://iptv-org.github.io/iptv/categories/classic.m3u" },
+      { name: "Comedy", url: "https://iptv-org.github.io/iptv/categories/comedy.m3u" },
+      { name: "Cooking", url: "https://iptv-org.github.io/iptv/categories/cooking.m3u" },
+      { name: "Documentary", url: "https://iptv-org.github.io/iptv/categories/documentary.m3u" },
+      { name: "Entertainment", url: "https://iptv-org.github.io/iptv/categories/entertainment.m3u" },
+      { name: "Movies", url: "https://iptv-org.github.io/iptv/categories/movies.m3u" },
+      { name: "News", url: "https://iptv-org.github.io/iptv/categories/news.m3u" },
+      { name: "Sports", url: "https://iptv-org.github.io/iptv/categories/sports.m3u" }
+    ];
+    
+    function populateCategories() {
+      const channelList = document.getElementById("channelList");
+      categories.forEach(category => {
+        const button = document.createElement("div");
+        button.classList.add("category");
+        button.textContent = `${category.name}`;
+        button.addEventListener("click", () => loadM3U(category.url));
+        channelList.appendChild(button);
+      });
+    }
+    
+    function loadM3U(url) {
+      fetch(url)
+        .then(response => response.text())
+        .then(text => parseM3U(text))
+        .catch(err => alert("Error loading m3u file: " + err));
+    }
+    
+    function parseM3U(content) {
+      const lines = content.split(/\r?\n/);
+      const channels = [];
+      let channelName = "";
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        if (line.startsWith("#EXTINF:")) {
+          const commaIndex = line.indexOf(",");
+          channelName = (commaIndex !== -1) ? line.substring(commaIndex + 1).trim() : "Unknown Channel";
+        } else if (!line.startsWith("#")) {
+          if (channelName === "") channelName = "Unknown Channel";
+          channels.push({ name: channelName, url: line });
+          channelName = "";
+        }
+      }
+      displayChannels(channels);
+    }
+    
+    function displayChannels(channels) {
+      const channelList = document.getElementById("channelList");
+      channelList.innerHTML = "<h3>Channels</h3>";
+      channels.forEach(channel => {
+        const div = document.createElement("div");
+        div.classList.add("category");
+        div.textContent = channel.name;
+        div.addEventListener("click", () => playStream(channel.url));
+        channelList.appendChild(div);
+      });
+    }
+    
+    function playStream(url) {
+      const video = document.getElementById("videoPlayer");
+      if (Hls.isSupported() && url.includes(".m3u8")) {
+        if (window.hls) window.hls.destroy();
+        const hls = new Hls();
+        window.hls = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+      } else {
+        video.src = url;
+        video.play();
+      }
+    }
+    
+    populateCategories();
+  </script>
+</body>
+</html>
